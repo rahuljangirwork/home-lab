@@ -1,22 +1,18 @@
-version: "3"
-
+version: "3.8"
 services:
-  wireguard:
-    image: linuxserver/wireguard
+  wg-easy:
+    image: weejewel/wg-easy
     container_name: wireguard
+    environment:
+      # This should be your server's public IP or domain name
+      - WG_HOST=${WG_HOST}
+      # The password for the web UI admin panel
+      - PASSWORD=${PASSWORD}
+    volumes:
+      - ./config:/etc/wireguard
+    ports:
+      - "51820:51820/udp"
+      - "51821:51821/tcp"
     cap_add:
       - NET_ADMIN
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/New_York # Change to your timezone
-      - SERVERURL=auto # Optional: Change to your domain or IP
-      - PEERS=1 # Number of peer configurations to generate
-    volumes:
-      - ./config:/config
-      - /lib/modules:/lib/modules
-    ports:
-      - 51820:51820/udp
-    sysctls:
-      - net.ipv4.conf.all.src_valid_mark=1
     restart: unless-stopped

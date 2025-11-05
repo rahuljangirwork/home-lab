@@ -45,19 +45,14 @@ create_lxc() {
     fi
 
     print_msg "Creating container $HOSTNAME (CT $CT_ID)..."
-    # For compatibility with older Proxmox, creating a privileged container.
-    # This is less secure but required if --nesting and --keyctl flags are not available.
     pct create $CT_ID $TEMPLATE --hostname $HOSTNAME --storage $STORAGE_POOL --rootfs $STORAGE_POOL:${DISK%G} \
         --cores $CPU --memory $RAM --swap 512 --onboot 1 --unprivileged 0 \
         --net0 name=eth0,bridge=$BRIDGE,ip=$IP_CIDR,gw=$GATEWAY || { print_err "Failed to create CT $CT_ID."; exit 1; }
 
-    # Disable AppArmor for Docker compatibility
     echo "lxc.apparmor.profile: unconfined" >> /etc/pve/lxc/${CT_ID}.conf
-
     print_msg "Restarting container to apply security profile..."
-    pct stop $CT_ID
-    pct start $CT_ID
-    sleep 5 # Give container time to boot
+    pct stop $CT_ID &>/dev/null; pct start $CT_ID
+    sleep 5
     until pct exec $CT_ID -- ping -c 1 8.8.8.8 &>/dev/null; do print_msg "Waiting for network..." && sleep 3; done
 
     print_msg "Installing Docker and dependencies..."
@@ -67,30 +62,62 @@ create_lxc() {
     print_msg "Container $HOSTNAME is ready."; return 0
 }
 
+# Prepares environment files for services that need them before starting.
+prepare_service_env() {
+    local SERVICE_NAME=$1
+    if [ "$SERVICE_NAME" == "wireguard" ]; then
+        print_msg "Configuring WireGuard UI (wg-easy)..."
+        local wg_host admin_pass confirm_pass
+        echo "Please provide the public address for your WireGuard server."
+        echo "This is the domain name or public IP that clients will use to connect."
+        read -p "Enter WireGuard Host (e.g., my.domain.com or public_ip): " wg_host
+
+        while true; do
+            read -sp "Enter a password for the WireGuard web admin panel: " admin_pass; echo
+            read -sp "Confirm password: " confirm_pass; echo
+            [ "$admin_pass" == "$confirm_pass" ] && [ -n "$admin_pass" ] && break
+            print_err "Passwords do not match or are empty. Please try again."
+        done
+        
+        echo "WG_HOST=${wg_host}" > "./wireguard/.env"
+        echo "PASSWORD=${admin_pass}" >> "./wireguard/.env"
+    fi
+}
+
 deploy_service() {
     local CT_ID=$1 SERVICE_NAME=$2 COMPOSE_DIR="/opt/$SERVICE_NAME"
     print_msg "Deploying $SERVICE_NAME to CT $CT_ID..."
+
+    # Create .env file if needed
+    prepare_service_env $SERVICE_NAME
+
     pct exec $CT_ID -- mkdir -p $COMPOSE_DIR
     pct push $CT_ID "./$SERVICE_NAME/docker-compose.yml" "$COMPOSE_DIR/docker-compose.yml"
+
+    # Push .env file if it was created
+    if [ -f "./$SERVICE_NAME/.env" ]; then
+        pct push $CT_ID "./$SERVICE_NAME/.env" "$COMPOSE_DIR/.env"
+        rm "./$SERVICE_NAME/.env" # Clean up local temp file
+    fi
+
     pct exec $CT_ID -- bash -c "cd $COMPOSE_DIR && docker compose up -d" || { print_err "Failed to deploy $SERVICE_NAME."; return 1; }
 
+    # Post-deployment actions
     if [ "$SERVICE_NAME" == "pihole" ]; then
         print_msg "Setting Pi-hole admin password..."
-        local new_pass
-        local confirm_pass
-        # Wait a few seconds for pihole-FTL to be ready before setting password
         print_msg "Waiting for Pi-hole to initialize (10 seconds)..."
         sleep 10
+        local new_pass confirm_pass
         while true; do
-            read -sp "Enter new Pi-hole admin password: " new_pass
-            echo
-            read -sp "Confirm new password: " confirm_pass
-            echo
+            read -sp "Enter new Pi-hole admin password: " new_pass; echo
+            read -sp "Confirm new password: " confirm_pass; echo
             [ "$new_pass" == "$confirm_pass" ] && [ -n "$new_pass" ] && break
             print_err "Passwords do not match or are empty. Please try again."
         done
         pct exec $CT_ID -- docker exec pihole pihole setpassword "$new_pass" || { print_err "Failed to set Pi-hole password."; return 1; }
         print_msg "Pi-hole password has been set successfully."
+    elif [ "$SERVICE_NAME" == "wireguard" ]; then
+        print_msg "WireGuard UI is available at: http://10.0.0.22:51821"
     fi
 
     print_msg "$SERVICE_NAME deployed successfully!"
@@ -130,7 +157,7 @@ main_menu() {
     read -p "Enter your choice [1-8]: " choice
     case $choice in
         1) deploy_all;; 2) deploy_single 0;; 3) deploy_single 1;; 4) deploy_single 2;;
-        5) deploy_single 3;; 6) deploy_single 4;; 7) destroy_menu;; 8) exit 0;;
+        5) deploy_single 3;; 6) deploy_single 4;; 7) destroy_menu;; 8) exit 0;; 
         *) print_err "Invalid option." && sleep 2;; 
     esac
 }
