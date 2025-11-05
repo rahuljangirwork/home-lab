@@ -9,6 +9,7 @@ services:
       - "445:445"
     volumes:
       - ./data:/share
-    # Credentials will be sourced from a .env file created during deployment.
-    command: -u "${SAMBA_USER};${SAMBA_PASS}" -s "public;/share;yes;no;yes"
+    # In the command below, change 'user' and 'password' to your desired credentials.
+    # Or, for guest access with no password, use: -s "public;/share;yes;yes;yes"
+    command: -u "user;password" -s "public;/share;yes;no;yes"
     restart: unless-stopped

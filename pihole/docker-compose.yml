@@ -11,7 +11,7 @@ services:
       - "80:80/tcp"
     environment:
       TZ: 'America/New_York' # Change to your timezone
-      WEBPASSWORD: '${WEBPASSWORD}' # Set in .env file during deployment
+      WEBPASSWORD: 'changeme' # Change this password
     volumes:
       - './etc-pihole/:/etc/pihole/'
       - './etc-dnsmasq.d/:/etc/dnsmasq.d/'
