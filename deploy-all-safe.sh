@@ -51,12 +51,17 @@ create_lxc() {
         --cores $CPU --memory $RAM --swap 512 --onboot 1 --unprivileged 0 \
         --net0 name=eth0,bridge=$BRIDGE,ip=$IP_CIDR,gw=$GATEWAY || { print_err "Failed to create CT $CT_ID."; exit 1; }
 
-    pct start $CT_ID && sleep 5
+    # Disable AppArmor for Docker compatibility
+    echo "lxc.apparmor.profile: unconfined" >> /etc/pve/lxc/${CT_ID}.conf
+
+    print_msg "Restarting container to apply security profile..."
+    pct restart $CT_ID
+    sleep 5 # Give container time to boot
     until pct exec $CT_ID -- ping -c 1 8.8.8.8 &>/dev/null; do print_msg "Waiting for network..." && sleep 3; done
 
     print_msg "Installing Docker and dependencies..."
     pct exec $CT_ID -- apt-get update
-    pct exec $CT_ID -- apt-get install -y curl sudo docker-compose
+    pct exec $CT_ID -- apt-get install -y curl sudo
     pct exec $CT_ID -- bash -c "curl -fsSL https://get.docker.com | sh"
     print_msg "Container $HOSTNAME is ready."; return 0
 }
