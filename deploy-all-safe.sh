@@ -55,7 +55,8 @@ create_lxc() {
     echo "lxc.apparmor.profile: unconfined" >> /etc/pve/lxc/${CT_ID}.conf
 
     print_msg "Restarting container to apply security profile..."
-    pct restart $CT_ID
+    pct stop $CT_ID
+    pct start $CT_ID
     sleep 5 # Give container time to boot
     until pct exec $CT_ID -- ping -c 1 8.8.8.8 &>/dev/null; do print_msg "Waiting for network..." && sleep 3; done
 
