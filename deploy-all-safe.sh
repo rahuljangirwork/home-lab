@@ -45,8 +45,10 @@ create_lxc() {
     fi
 
     print_msg "Creating container $HOSTNAME (CT $CT_ID)..."
+    # For compatibility with older Proxmox, creating a privileged container.
+    # This is less secure but required if --nesting and --keyctl flags are not available.
     pct create $CT_ID $TEMPLATE --hostname $HOSTNAME --storage $STORAGE_POOL --rootfs $STORAGE_POOL:$DISK \
-        --cores $CPU --memory $RAM --swap 512 --onboot 1 --nesting 1 --keyctl 1 \
+        --cores $CPU --memory $RAM --swap 512 --onboot 1 --unprivileged 0 \
         --net0 name=eth0,bridge=$BRIDGE,ip=$IP_CIDR,gw=$GATEWAY || { print_err "Failed to create CT $CT_ID."; exit 1; }
 
     pct start $CT_ID && sleep 5
