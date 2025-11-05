@@ -73,6 +73,26 @@ deploy_service() {
     pct exec $CT_ID -- mkdir -p $COMPOSE_DIR
     pct push $CT_ID "./$SERVICE_NAME/docker-compose.yml" "$COMPOSE_DIR/docker-compose.yml"
     pct exec $CT_ID -- bash -c "cd $COMPOSE_DIR && docker compose up -d" || { print_err "Failed to deploy $SERVICE_NAME."; return 1; }
+
+    if [ "$SERVICE_NAME" == "pihole" ]; then
+        print_msg "Setting Pi-hole admin password..."
+        local new_pass
+        local confirm_pass
+        # Wait a few seconds for pihole-FTL to be ready before setting password
+        print_msg "Waiting for Pi-hole to initialize (10 seconds)..."
+        sleep 10
+        while true; do
+            read -sp "Enter new Pi-hole admin password: " new_pass
+            echo
+            read -sp "Confirm new password: " confirm_pass
+            echo
+            [ "$new_pass" == "$confirm_pass" ] && [ -n "$new_pass" ] && break
+            print_err "Passwords do not match or are empty. Please try again."
+        done
+        pct exec $CT_ID -- docker exec pihole pihole -a -p "$new_pass" || { print_err "Failed to set Pi-hole password."; return 1; }
+        print_msg "Pi-hole password has been set successfully."
+    fi
+
     print_msg "$SERVICE_NAME deployed successfully!"
 }
 
