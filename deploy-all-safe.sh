@@ -89,7 +89,7 @@ deploy_service() {
             [ "$new_pass" == "$confirm_pass" ] && [ -n "$new_pass" ] && break
             print_err "Passwords do not match or are empty. Please try again."
         done
-        pct exec $CT_ID -- docker exec pihole pihole -a -p "$new_pass" || { print_err "Failed to set Pi-hole password."; return 1; }
+        pct exec $CT_ID -- docker exec pihole pihole setpassword "$new_pass" || { print_err "Failed to set Pi-hole password."; return 1; }
         print_msg "Pi-hole password has been set successfully."
     fi
 
