@@ -72,7 +72,7 @@ deploy_service() {
     print_msg "Deploying $SERVICE_NAME to CT $CT_ID..."
     pct exec $CT_ID -- mkdir -p $COMPOSE_DIR
     pct push $CT_ID "./$SERVICE_NAME/docker-compose.yml" "$COMPOSE_DIR/docker-compose.yml"
-    pct exec $CT_ID -- bash -c "cd $COMPOSE_DIR && docker-compose up -d"
+    pct exec $CT_ID -- bash -c "cd $COMPOSE_DIR && docker compose up -d" || { print_err "Failed to deploy $SERVICE_NAME."; return 1; }
     print_msg "$SERVICE_NAME deployed successfully!"
 }
 
