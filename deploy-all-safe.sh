@@ -9,7 +9,7 @@
 
 #--- Configuration ---
 # Set your Proxmox environment details here.
-STORAGE_POOL="VMS-ST000LM035" # IMPORTANT: Change this to your storage pool name
+STORAGE_POOL="VMS" # IMPORTANT: Change this to your storage pool name
 TEMPLATE="local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst" # Verify with 'pveam list local'
 BRIDGE="vmbr0"
 GATEWAY="10.0.0.10"
