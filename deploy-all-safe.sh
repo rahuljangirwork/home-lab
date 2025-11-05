@@ -23,6 +23,7 @@ SERVICES=(
     "102;rustdesk;10.0.0.23;1024;1;8G"
     "103;samba;10.0.0.24;512;1;4G"
     "104;nginx-proxy-manager;10.0.0.25;1024;1;8G"
+    "105;nextcloud;10.0.0.26;2048;2;20G"
 )
 
 #--- Helper Functions ---
@@ -81,6 +82,24 @@ prepare_service_env() {
         
         echo "WG_HOST=${wg_host}" > "./wireguard/.env"
         echo "PASSWORD=${admin_pass}" >> "./wireguard/.env"
+    elif [ "$SERVICE_NAME" == "nextcloud" ]; then
+        print_msg "Configuring Nextcloud..."
+        local db_root_pass db_user_pass confirm_pass
+        while true; do
+            read -sp "Enter a strong ROOT password for the Nextcloud database: " db_root_pass; echo
+            read -sp "Confirm password: " confirm_pass; echo
+            [ "$db_root_pass" == "$confirm_pass" ] && [ -n "$db_root_pass" ] && break
+            print_err "Passwords do not match or are empty. Please try again."
+        done
+        while true; do
+            read -sp "Enter a strong password for the Nextcloud database USER: " db_user_pass; echo
+            read -sp "Confirm password: " confirm_pass; echo
+            [ "$db_user_pass" == "$confirm_pass" ] && [ -n "$db_user_pass" ] && break
+            print_err "Passwords do not match or are empty. Please try again."
+        done
+
+        echo "MYSQL_ROOT_PASSWORD=${db_root_pass}" > "./nextcloud/.env"
+        echo "MYSQL_PASSWORD=${db_user_pass}" >> "./nextcloud/.env"
     fi
 }
 
@@ -118,6 +137,9 @@ deploy_service() {
         print_msg "Pi-hole password has been set successfully."
     elif [ "$SERVICE_NAME" == "wireguard" ]; then
         print_msg "WireGuard UI is available at: http://10.0.0.22:51821"
+    elif [ "$SERVICE_NAME" == "nextcloud" ]; then
+        print_msg "Nextcloud is starting up. It may take a few minutes."
+        print_msg "Nextcloud will be available at: http://10.0.0.26:8080"
     fi
 
     print_msg "$SERVICE_NAME deployed successfully!"
@@ -150,14 +172,15 @@ main_menu() {
     echo " 4. Deploy RustDesk (102)"
     echo " 5. Deploy Samba (103)"
     echo " 6. Deploy Nginx Proxy Manager (104)"
+    echo " 7. Deploy Nextcloud (105)"
     echo " ----------------------------------------"
-    echo " 7. Destroy Services..."
-    echo " 8. Exit"
+    echo " 8. Destroy Services..."
+    echo " 9. Exit"
     echo "========================================"
-    read -p "Enter your choice [1-8]: " choice
+    read -p "Enter your choice [1-9]: " choice
     case $choice in
         1) deploy_all;; 2) deploy_single 0;; 3) deploy_single 1;; 4) deploy_single 2;;
-        5) deploy_single 3;; 6) deploy_single 4;; 7) destroy_menu;; 8) exit 0;; 
+        5) deploy_single 3;; 6) deploy_single 4;; 7) deploy_single 5;; 8) destroy_menu;; 9) exit 0;; 
         *) print_err "Invalid option." && sleep 2;; 
     esac
 }
@@ -174,15 +197,16 @@ destroy_menu() {
     echo " 3. Destroy RustDesk (102)"
     echo " 4. Destroy Samba (103)"
     echo " 5. Destroy Nginx Proxy Manager (104)"
-    echo " 6. Destroy ALL Services"
-    echo " 7. Back to Main Menu"
+    echo " 6. Destroy Nextcloud (105)"
+    echo " 7. Destroy ALL Services"
+    echo " 8. Back to Main Menu"
     echo "========================================"
-    read -p "Enter your choice [1-7]: " choice
+    read -p "Enter your choice [1-8]: " choice
     case $choice in
-        1|2|3|4|5) local i=(${SERVICES[$((choice-1))]//;/ }); destroy_ct "${i[0]}" "${i[1]}";;
-        6) read -p "Destroy ALL services? This is IRREVERSIBLE. [y/N]: " c
+        1|2|3|4|5|6) local i=(${SERVICES[$((choice-1))]//;/ }); destroy_ct "${i[0]}" "${i[1]}";;
+        7) read -p "Destroy ALL services? This is IRREVERSIBLE. [y/N]: " c
            [[ $c == "y" || $c == "Y" ]] && for i in "${!SERVICES[@]}"; do local j=(${SERVICES[$i]//;/ }); destroy_ct "${j[0]}" "${j[1]}" false; done;; 
-        7) return;; 
+        8) return;; 
         *) print_err "Invalid option." && sleep 2;; 
     esac
     read -p "Press Enter to return..."
