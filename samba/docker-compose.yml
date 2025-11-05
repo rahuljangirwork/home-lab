@@ -1,0 +1,14 @@
+version: "3"
+
+services:
+  samba:
+    image: dperson/samba
+    container_name: samba
+    ports:
+      - "139:139"
+      - "445:445"
+    volumes:
+      - ./data:/share
+    # Credentials will be sourced from a .env file created during deployment.
+    command: -u "${SAMBA_USER};${SAMBA_PASS}" -s "public;/share;yes;no;yes"
+    restart: unless-stopped
