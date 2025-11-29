@@ -24,6 +24,7 @@ SERVICES=(
     "103;samba;10.0.0.24;512;1;4G"
     "104;nginx-proxy-manager;10.0.0.25;1024;1;8G"
     "105;nextcloud;10.0.0.26;2048;2;20G"
+    "106;vaultwarden;10.0.0.27;1024;1;8G"
 )
 
 #--- Helper Functions ---
@@ -173,14 +174,15 @@ main_menu() {
     echo " 5. Deploy Samba (103)"
     echo " 6. Deploy Nginx Proxy Manager (104)"
     echo " 7. Deploy Nextcloud (105)"
+    echo " 8. Deploy Vaultwarden (106)"
     echo " ----------------------------------------"
-    echo " 8. Destroy Services..."
-    echo " 9. Exit"
+    echo " 9. Destroy Services..."
+    echo " 10. Exit"
     echo "========================================"
-    read -p "Enter your choice [1-9]: " choice
+    read -p "Enter your choice [1-10]: " choice
     case $choice in
         1) deploy_all;; 2) deploy_single 0;; 3) deploy_single 1;; 4) deploy_single 2;;
-        5) deploy_single 3;; 6) deploy_single 4;; 7) deploy_single 5;; 8) destroy_menu;; 9) exit 0;; 
+        5) deploy_single 3;; 6) deploy_single 4;; 7) deploy_single 5;; 8) deploy_single 6;; 9) destroy_menu;; 10) exit 0;; 
         *) print_err "Invalid option." && sleep 2;; 
     esac
 }
@@ -198,15 +200,16 @@ destroy_menu() {
     echo " 4. Destroy Samba (103)"
     echo " 5. Destroy Nginx Proxy Manager (104)"
     echo " 6. Destroy Nextcloud (105)"
-    echo " 7. Destroy ALL Services"
-    echo " 8. Back to Main Menu"
+    echo " 7. Destroy Vaultwarden (106)"
+    echo " 8. Destroy ALL Services"
+    echo " 9. Back to Main Menu"
     echo "========================================"
-    read -p "Enter your choice [1-8]: " choice
+    read -p "Enter your choice [1-9]: " choice
     case $choice in
-        1|2|3|4|5|6) local i=(${SERVICES[$((choice-1))]//;/ }); destroy_ct "${i[0]}" "${i[1]}";;
-        7) read -p "Destroy ALL services? This is IRREVERSIBLE. [y/N]: " c
+        1|2|3|4|5|6|7) local i=(${SERVICES[$((choice-1))]//;/ }); destroy_ct "${i[0]}" "${i[1]}";;
+        8) read -p "Destroy ALL services? This is IRREVERSIBLE. [y/N]: " c
            [[ $c == "y" || $c == "Y" ]] && for i in "${!SERVICES[@]}"; do local j=(${SERVICES[$i]//;/ }); destroy_ct "${j[0]}" "${j[1]}" false; done;; 
-        8) return;; 
+        9) return;; 
         *) print_err "Invalid option." && sleep 2;; 
     esac
     read -p "Press Enter to return..."
